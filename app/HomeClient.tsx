@@ -24,12 +24,28 @@ export function HomeClient() {
     
     const handleLogin = () => {
       console.log('Login button clicked (via ref), navigating to /login')
-      window.location.href = '/login'
+      console.log('Current location:', window.location.href)
+      console.log('Target location:', window.location.origin + '/login')
+      try {
+        window.location.replace('/login')
+        console.log('window.location.replace called')
+      } catch (err) {
+        console.error('Navigation error:', err)
+        window.location.href = '/login'
+      }
     }
     
     const handleSignup = () => {
       console.log('Signup button clicked (via ref), navigating to /signup')
-      window.location.href = '/signup'
+      console.log('Current location:', window.location.href)
+      console.log('Target location:', window.location.origin + '/signup')
+      try {
+        window.location.replace('/signup')
+        console.log('window.location.replace called')
+      } catch (err) {
+        console.error('Navigation error:', err)
+        window.location.href = '/signup'
+      }
     }
     
     if (loginButton) {
@@ -55,34 +71,44 @@ export function HomeClient() {
   const handleLoginClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('Login button clicked (via onClick), using window.location.href')
+    console.log('Login button clicked (via onClick)')
+    console.log('Current location:', window.location.href)
+    console.log('Target location:', window.location.origin + '/login')
     setError(null)
     
-    // 直接window.location.hrefを使用（最も確実な方法）
+    // window.location.replaceを使用（より確実）
     try {
-      console.log('Navigating to /login')
-      window.location.href = '/login'
+      console.log('Calling window.location.replace("/login")')
+      window.location.replace('/login')
+      console.log('window.location.replace called successfully')
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       console.error('Login navigation error:', err)
       setError(`ログインエラー: ${errorMessage}`)
+      // フォールバック
+      window.location.href = '/login'
     }
   }
 
   const handleSignupClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('Signup button clicked (via onClick), using window.location.href')
+    console.log('Signup button clicked (via onClick)')
+    console.log('Current location:', window.location.href)
+    console.log('Target location:', window.location.origin + '/signup')
     setError(null)
     
-    // 直接window.location.hrefを使用（最も確実な方法）
+    // window.location.replaceを使用（より確実）
     try {
-      console.log('Navigating to /signup')
-      window.location.href = '/signup'
+      console.log('Calling window.location.replace("/signup")')
+      window.location.replace('/signup')
+      console.log('window.location.replace called successfully')
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       console.error('Signup navigation error:', err)
       setError(`新規登録エラー: ${errorMessage}`)
+      // フォールバック
+      window.location.href = '/signup'
     }
   }
 
