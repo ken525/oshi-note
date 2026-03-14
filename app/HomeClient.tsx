@@ -17,56 +17,77 @@ export function HomeClient() {
   useEffect(() => {
     setIsMounted(true)
     console.log('HomeClient mounted, router available:', !!router)
-    
-    // 直接イベントリスナーを追加（より確実）
-    const loginButton = loginButtonRef.current
-    const signupButton = signupButtonRef.current
-    
-    const handleLogin = () => {
-      console.log('Login button clicked (via ref), navigating to /login')
-      console.log('Current location:', window.location.href)
-      console.log('Target location:', window.location.origin + '/login')
-      try {
-        window.location.replace('/login')
-        console.log('window.location.replace called')
-      } catch (err) {
-        console.error('Navigation error:', err)
-        window.location.href = '/login'
-      }
-    }
-    
-    const handleSignup = () => {
-      console.log('Signup button clicked (via ref), navigating to /signup')
-      console.log('Current location:', window.location.href)
-      console.log('Target location:', window.location.origin + '/signup')
-      try {
-        window.location.replace('/signup')
-        console.log('window.location.replace called')
-      } catch (err) {
-        console.error('Navigation error:', err)
-        window.location.href = '/signup'
-      }
-    }
-    
-    if (loginButton) {
-      loginButton.addEventListener('click', handleLogin)
-      console.log('Login button event listener added')
-    }
-    
-    if (signupButton) {
-      signupButton.addEventListener('click', handleSignup)
-      console.log('Signup button event listener added')
-    }
-    
-    return () => {
-      if (loginButton) {
-        loginButton.removeEventListener('click', handleLogin)
-      }
-      if (signupButton) {
-        signupButton.removeEventListener('click', handleSignup)
-      }
-    }
   }, [router])
+
+  // ボタンがマウントされた後にイベントリスナーを追加
+  useEffect(() => {
+    if (!isMounted) return
+
+    // 少し待ってからボタンを取得（DOMが完全にレンダリングされるまで）
+    const timer = setTimeout(() => {
+      const loginButton = loginButtonRef.current
+      const signupButton = signupButtonRef.current
+      
+      console.log('Setting up event listeners, loginButton:', !!loginButton, 'signupButton:', !!signupButton)
+      
+      const handleLogin = (e: Event) => {
+        e.preventDefault()
+        e.stopPropagation()
+        console.log('Login button clicked (via ref), navigating to /login')
+        console.log('Current location:', window.location.href)
+        console.log('Target location:', window.location.origin + '/login')
+        try {
+          window.location.replace('/login')
+          console.log('window.location.replace called')
+        } catch (err) {
+          console.error('Navigation error:', err)
+          window.location.href = '/login'
+        }
+      }
+      
+      const handleSignup = (e: Event) => {
+        e.preventDefault()
+        e.stopPropagation()
+        console.log('Signup button clicked (via ref), navigating to /signup')
+        console.log('Current location:', window.location.href)
+        console.log('Target location:', window.location.origin + '/signup')
+        try {
+          window.location.replace('/signup')
+          console.log('window.location.replace called')
+        } catch (err) {
+          console.error('Navigation error:', err)
+          window.location.href = '/signup'
+        }
+      }
+      
+      if (loginButton) {
+        loginButton.addEventListener('click', handleLogin, true) // capture phase
+        console.log('Login button event listener added')
+      } else {
+        console.warn('Login button not found!')
+      }
+      
+      if (signupButton) {
+        signupButton.addEventListener('click', handleSignup, true) // capture phase
+        console.log('Signup button event listener added')
+      } else {
+        console.warn('Signup button not found!')
+      }
+      
+      return () => {
+        if (loginButton) {
+          loginButton.removeEventListener('click', handleLogin, true)
+        }
+        if (signupButton) {
+          signupButton.removeEventListener('click', handleSignup, true)
+        }
+      }
+    }, 100)
+
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [isMounted])
 
   const handleLoginClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
