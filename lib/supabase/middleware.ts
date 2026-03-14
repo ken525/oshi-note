@@ -41,10 +41,14 @@ export async function updateSession(request: NextRequest) {
   // セッションを更新してユーザー情報を取得
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser()
 
   const url = request.nextUrl.clone()
   const pathname = url.pathname
+
+  // デバッグログ（本番環境でも確認できるように）
+  console.log('[Middleware] Path:', pathname, 'User:', !!user, 'Error:', userError?.message)
 
   // 認証が必要なルート（ダッシュボード配下、推し、記事、アーカイブ、設定など）
   const protectedRoutes = ['/oshi', '/articles', '/archive', '/settings']
@@ -59,15 +63,24 @@ export async function updateSession(request: NextRequest) {
 
   // 未認証ユーザーが保護されたルートにアクセスした場合
   if (isProtectedRoute && !user) {
+    console.log('[Middleware] Redirecting to /login (protected route, no user)')
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
   // 認証済みユーザーがログイン/サインアップページにアクセスした場合
   if (isAuthRoute && user) {
+    console.log('[Middleware] Redirecting to / (auth route, user exists)')
     url.pathname = '/'
     return NextResponse.redirect(url)
   }
 
+  // ログイン/サインアップページへのアクセスを許可（未認証ユーザー）
+  if (isAuthRoute && !user) {
+    console.log('[Middleware] Allowing access to', pathname, '(no user)')
+    return supabaseResponse
+  }
+
+  console.log('[Middleware] Allowing access to', pathname)
   return supabaseResponse
 }
