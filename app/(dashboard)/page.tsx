@@ -11,7 +11,9 @@ import { createClient } from "@/lib/supabase/client"
 import { ArticleCard } from "@/components/features/articles/ArticleCard"
 import { OshiTabs } from "@/components/features/articles/OshiTabs"
 import { EmptyState } from "@/components/features/articles/EmptyState"
-import { Loader2, Calendar } from "lucide-react"
+import { Loader2, Calendar, Archive } from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui"
 import type { Article, Oshi } from "@/types"
 
 export default function DashboardPage() {
@@ -97,9 +99,20 @@ export default function DashboardPage() {
     <div>
       {/* ヘッダー */}
       <div className="mb-6">
-        <h1 className="mb-4 text-3xl font-bold text-gray-900 dark:text-gray-100">
-          今日の推しノート
-        </h1>
+        <div className="mb-4 flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            今日の推しノート
+          </h1>
+          <Link href="/archive">
+            <Button
+              variant="outline"
+              className="flex items-center gap-2 border-pink-300 text-pink-600 hover:bg-pink-50 dark:border-pink-700 dark:text-pink-400 dark:hover:bg-pink-900/20"
+            >
+              <Archive className="h-4 w-4" />
+              アーカイブを見る
+            </Button>
+          </Link>
+        </div>
         <OshiTabs
           oshiList={oshiList}
           selectedOshiId={selectedOshiId}

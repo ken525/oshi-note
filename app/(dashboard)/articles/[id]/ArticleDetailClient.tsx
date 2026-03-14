@@ -12,7 +12,7 @@ import { ja } from "date-fns/locale"
 import { createClient } from "@/lib/supabase/client"
 import { ArticleContent } from "@/components/features/articles/ArticleContent"
 import { ShareButton } from "@/components/features/share/ShareButton"
-import { Loader2, ArrowLeft, Calendar, ExternalLink, Sparkles } from "lucide-react"
+import { Loader2, ArrowLeft, Calendar, ExternalLink, Sparkles, Archive } from "lucide-react"
 import type { Article, Oshi } from "@/types"
 
 interface ArticleDetailClientProps {
@@ -104,6 +104,13 @@ export function ArticleDetailClient({
 
         <div className="flex items-center gap-4">
           <ShareButton title={article.title} url={currentUrl} oshiName={oshi?.name} />
+          <Link
+            href={`/archive?date=${publishedDate.toISOString().split('T')[0]}`}
+            className="inline-flex items-center gap-2 rounded-lg bg-pink-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-pink-600 dark:bg-pink-600 dark:hover:bg-pink-700"
+          >
+            <Archive className="h-4 w-4" />
+            この日のアーカイブを見る
+          </Link>
         </div>
       </div>
 

@@ -5,7 +5,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import Calendar from "react-calendar"
 import "react-calendar/dist/Calendar.css"
@@ -21,6 +21,7 @@ type ValuePiece = Date | null
 type Value = ValuePiece | [ValuePiece, ValuePiece]
 
 export default function ArchivePage() {
+  const searchParams = useSearchParams()
   const [selectedDate, setSelectedDate] = useState<Value>(new Date())
   const [articles, setArticles] = useState<Article[]>([])
   const [oshiList, setOshiList] = useState<Oshi[]>([])
@@ -36,6 +37,18 @@ export default function ArchivePage() {
   useEffect(() => {
     fetchOshiList()
   }, [])
+
+  useEffect(() => {
+    // URLクエリパラメータから日付を取得
+    const dateParam = searchParams.get('date')
+    if (dateParam) {
+      const date = new Date(dateParam)
+      if (!isNaN(date.getTime())) {
+        setSelectedDate(date)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams.toString()])
 
   useEffect(() => {
     if (selectedDate && selectedDate instanceof Date) {
