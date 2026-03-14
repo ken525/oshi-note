@@ -7,6 +7,9 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui'
 
+// 動的レンダリングを強制（cookies()を使用するため）
+export const dynamic = 'force-dynamic'
+
 export default async function Home() {
   try {
     const supabase = await createClient()
@@ -16,7 +19,7 @@ export default async function Home() {
 
     // 認証済みユーザーはダッシュボードにリダイレクト
     if (user) {
-      redirect('/')
+      redirect('/oshi')
     }
   } catch (error) {
     // 環境変数が設定されていない場合など、エラーが発生してもランディングページを表示
