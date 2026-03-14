@@ -70,8 +70,8 @@ export async function updateSession(request: NextRequest) {
 
   // 認証済みユーザーがログイン/サインアップページにアクセスした場合
   if (isAuthRoute && user) {
-    console.log('[Middleware] Redirecting to / (auth route, user exists)')
-    url.pathname = '/'
+    console.log('[Middleware] Redirecting to /oshi (auth route, user exists)')
+    url.pathname = '/oshi'
     return NextResponse.redirect(url)
   }
 

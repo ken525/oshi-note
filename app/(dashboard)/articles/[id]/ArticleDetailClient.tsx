@@ -59,7 +59,7 @@ export function ArticleDetailClient({
     <div>
       {/* 戻るボタン */}
       <Link
-        href="/"
+        href="/oshi"
         className="mb-6 inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-pink-500 dark:hover:text-pink-400 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
