@@ -37,18 +37,17 @@ export default async function Home() {
           あなただけの推しノートを作成・管理するアプリケーション
         </p>
         <div className="flex justify-center gap-4">
-          <Link href="/login">
-            <Button 
-              size="lg" 
-              className="bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white"
-            >
-              ログイン
-            </Button>
+          <Link 
+            href="/login"
+            className="inline-flex items-center justify-center px-6 py-3 text-lg font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white focus:ring-pink-500"
+          >
+            ログイン
           </Link>
-          <Link href="/signup">
-            <Button variant="outline" size="lg">
-              新規登録
-            </Button>
+          <Link 
+            href="/signup"
+            className="inline-flex items-center justify-center px-6 py-3 text-lg font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            新規登録
           </Link>
         </div>
       </main>
