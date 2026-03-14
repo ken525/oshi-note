@@ -78,6 +78,12 @@ export async function updateSession(request: NextRequest) {
   // ログイン/サインアップページへのアクセスを許可（未認証ユーザー）
   if (isAuthRoute && !user) {
     console.log('[Middleware] Allowing access to', pathname, '(no user)')
+    return NextResponse.next({ request })
+  }
+
+  // パブリックルートへのアクセスを許可
+  if (isPublicRoute) {
+    console.log('[Middleware] Allowing access to', pathname, '(public route)')
     return supabaseResponse
   }
 

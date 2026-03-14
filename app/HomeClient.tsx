@@ -31,33 +31,31 @@ export function HomeClient() {
       console.log('Setting up event listeners, loginButton:', !!loginButton, 'signupButton:', !!signupButton)
       
       const handleLogin = (e: Event) => {
+        console.log('=== Login button clicked (via ref) ===')
         e.preventDefault()
         e.stopPropagation()
-        console.log('Login button clicked (via ref), navigating to /login')
+        e.stopImmediatePropagation()
         console.log('Current location:', window.location.href)
         console.log('Target location:', window.location.origin + '/login')
-        try {
-          window.location.replace('/login')
-          console.log('window.location.replace called')
-        } catch (err) {
-          console.error('Navigation error:', err)
-          window.location.href = '/login'
-        }
+        
+        // 即座にナビゲーション
+        const targetUrl = window.location.origin + '/login'
+        console.log('Navigating to:', targetUrl)
+        window.location.href = targetUrl
       }
       
       const handleSignup = (e: Event) => {
+        console.log('=== Signup button clicked (via ref) ===')
         e.preventDefault()
         e.stopPropagation()
-        console.log('Signup button clicked (via ref), navigating to /signup')
+        e.stopImmediatePropagation()
         console.log('Current location:', window.location.href)
         console.log('Target location:', window.location.origin + '/signup')
-        try {
-          window.location.replace('/signup')
-          console.log('window.location.replace called')
-        } catch (err) {
-          console.error('Navigation error:', err)
-          window.location.href = '/signup'
-        }
+        
+        // 即座にナビゲーション
+        const targetUrl = window.location.origin + '/signup'
+        console.log('Navigating to:', targetUrl)
+        window.location.href = targetUrl
       }
       
       if (loginButton) {
@@ -90,47 +88,33 @@ export function HomeClient() {
   }, [isMounted])
 
   const handleLoginClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    console.log('=== Login button clicked (via onClick) ===')
     e.preventDefault()
     e.stopPropagation()
-    console.log('Login button clicked (via onClick)')
+    e.stopImmediatePropagation()
     console.log('Current location:', window.location.href)
-    console.log('Target location:', window.location.origin + '/login')
+    const targetUrl = window.location.origin + '/login'
+    console.log('Target location:', targetUrl)
     setError(null)
     
-    // window.location.replaceを使用（より確実）
-    try {
-      console.log('Calling window.location.replace("/login")')
-      window.location.replace('/login')
-      console.log('window.location.replace called successfully')
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-      console.error('Login navigation error:', err)
-      setError(`ログインエラー: ${errorMessage}`)
-      // フォールバック
-      window.location.href = '/login'
-    }
+    // 即座にナビゲーション
+    console.log('Navigating to:', targetUrl)
+    window.location.href = targetUrl
   }
 
   const handleSignupClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    console.log('=== Signup button clicked (via onClick) ===')
     e.preventDefault()
     e.stopPropagation()
-    console.log('Signup button clicked (via onClick)')
+    e.stopImmediatePropagation()
     console.log('Current location:', window.location.href)
-    console.log('Target location:', window.location.origin + '/signup')
+    const targetUrl = window.location.origin + '/signup'
+    console.log('Target location:', targetUrl)
     setError(null)
     
-    // window.location.replaceを使用（より確実）
-    try {
-      console.log('Calling window.location.replace("/signup")')
-      window.location.replace('/signup')
-      console.log('window.location.replace called successfully')
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-      console.error('Signup navigation error:', err)
-      setError(`新規登録エラー: ${errorMessage}`)
-      // フォールバック
-      window.location.href = '/signup'
-    }
+    // 即座にナビゲーション
+    console.log('Navigating to:', targetUrl)
+    window.location.href = targetUrl
   }
 
   if (!isMounted) {
