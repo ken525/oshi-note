@@ -1,0 +1,35 @@
+{
+  "name": "私だけの推しノート",
+  "short_name": "推しノート",
+  "description": "あなただけの推しノートを作成・管理するアプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#FF6B9D",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ],
+  "categories": ["lifestyle", "entertainment"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "推しを登録",
+      "short_name": "登録",
+      "description": "新しい推しを登録",
+      "url": "/oshi/new",
+      "icons": [{ "src": "/favicon.ico", "sizes": "any" }]
+    },
+    {
+      "name": "アーカイブ",
+      "short_name": "アーカイブ",
+      "description": "過去の記事を閲覧",
+      "url": "/archive",
+      "icons": [{ "src": "/favicon.ico", "sizes": "any" }]
+    }
+  ]
+}
