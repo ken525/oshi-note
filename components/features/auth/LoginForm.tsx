@@ -59,10 +59,12 @@ export function LoginForm() {
         return
       }
 
-      // ログイン成功後、少し待ってからリダイレクト
-      await new Promise(resolve => setTimeout(resolve, 100))
-      router.push("/")
-      router.refresh()
+      // ログイン成功後、ダッシュボードにリダイレクト
+      console.log('Login successful, redirecting to /oshi')
+      // セッションが確実に更新されるまで少し待つ
+      await new Promise(resolve => setTimeout(resolve, 200))
+      // ダッシュボードに直接リダイレクト
+      window.location.href = '/oshi'
     } catch (err) {
       console.error("Unexpected login error:", err)
       const errorMessage = err instanceof Error ? err.message : "ログインに失敗しました。もう一度お試しください。"

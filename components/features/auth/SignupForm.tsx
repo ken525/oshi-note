@@ -59,8 +59,11 @@ export function SignupForm() {
       }
 
       // サインアップ成功後、ダッシュボードにリダイレクト
-      router.push("/")
-      router.refresh()
+      console.log('Signup successful, redirecting to /oshi')
+      // セッションが確実に更新されるまで少し待つ
+      await new Promise(resolve => setTimeout(resolve, 200))
+      // ダッシュボードに直接リダイレクト
+      window.location.href = '/oshi'
     } catch (err) {
       setError("サインアップに失敗しました。もう一度お試しください。")
     } finally {
