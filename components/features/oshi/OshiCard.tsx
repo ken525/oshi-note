@@ -31,7 +31,10 @@ export function OshiCard({ oshi, onDelete }: OshiCardProps) {
   }
 
   return (
-    <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-pink-500 via-purple-500 to-pink-600 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+    <Link 
+      href={`/oshi/${oshi.id}/edit`}
+      className="group relative block overflow-hidden rounded-2xl bg-gradient-to-br from-pink-500 via-purple-500 to-pink-600 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+    >
       {/* 背景グラデーションオーバーレイ */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
       
@@ -67,9 +70,13 @@ export function OshiCard({ oshi, onDelete }: OshiCardProps) {
           </div>
           
           {/* メニューボタン */}
-          <div className="relative">
+          <div className="relative" onClick={(e) => e.stopPropagation()}>
             <button
-              onClick={() => setShowMenu(!showMenu)}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowMenu(!showMenu)
+              }}
               className="rounded-full p-2 hover:bg-white/20 transition-colors"
             >
               <MoreVertical className="h-5 w-5" />
@@ -126,6 +133,6 @@ export function OshiCard({ oshi, onDelete }: OshiCardProps) {
 
       {/* ホバー時のエフェクト */}
       <div className="absolute inset-0 bg-gradient-to-r from-pink-400/0 via-purple-400/0 to-pink-400/0 group-hover:from-pink-400/10 group-hover:via-purple-400/10 group-hover:to-pink-400/10 transition-all duration-300 pointer-events-none" />
-    </div>
+    </Link>
   )
 }
