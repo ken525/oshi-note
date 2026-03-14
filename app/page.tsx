@@ -8,14 +8,19 @@ import Link from 'next/link'
 import { Button } from '@/components/ui'
 
 export default async function Home() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  // 認証済みユーザーはダッシュボードにリダイレクト
-  if (user) {
-    redirect('/')
+    // 認証済みユーザーはダッシュボードにリダイレクト
+    if (user) {
+      redirect('/')
+    }
+  } catch (error) {
+    // 環境変数が設定されていない場合など、エラーが発生してもランディングページを表示
+    console.error('Supabase初期化エラー:', error)
   }
 
   // 未認証ユーザー向けのランディングページ
