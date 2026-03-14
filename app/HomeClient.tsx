@@ -17,7 +17,7 @@ export function HomeClient() {
     console.log('HomeClient mounted, router available:', !!router)
   }, [router])
 
-  const handleLoginClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleLoginClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     try {
       e.preventDefault()
       console.log('Login button clicked')
@@ -27,28 +27,38 @@ export function HomeClient() {
         throw new Error('Router is not available')
       }
 
-      // 複数の方法を試す
+      // router.push()を試す
       try {
-        router.push('/login')
-        console.log('Router.push called for /login')
+        await router.push('/login')
+        console.log('Router.push completed for /login')
+        // 念のためrefreshも呼ぶ
+        router.refresh()
       } catch (routerError) {
         console.error('Router.push error:', routerError)
         // フォールバック: window.locationを使用
+        console.log('Falling back to window.location.href')
         window.location.href = '/login'
+        return
       }
+
+      // router.push()が成功しても遷移しない場合のフォールバック
+      setTimeout(() => {
+        if (window.location.pathname !== '/login') {
+          console.log('Router.push did not navigate, using window.location.href')
+          window.location.href = '/login'
+        }
+      }, 500)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       console.error('Login click error:', err)
       setError(`ログインエラー: ${errorMessage}`)
       
       // フォールバック: 直接ナビゲーション
-      setTimeout(() => {
-        window.location.href = '/login'
-      }, 100)
+      window.location.href = '/login'
     }
   }
 
-  const handleSignupClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleSignupClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
     try {
       e.preventDefault()
       console.log('Signup button clicked')
@@ -58,24 +68,34 @@ export function HomeClient() {
         throw new Error('Router is not available')
       }
 
-      // 複数の方法を試す
+      // router.push()を試す
       try {
-        router.push('/signup')
-        console.log('Router.push called for /signup')
+        await router.push('/signup')
+        console.log('Router.push completed for /signup')
+        // 念のためrefreshも呼ぶ
+        router.refresh()
       } catch (routerError) {
         console.error('Router.push error:', routerError)
         // フォールバック: window.locationを使用
+        console.log('Falling back to window.location.href')
         window.location.href = '/signup'
+        return
       }
+
+      // router.push()が成功しても遷移しない場合のフォールバック
+      setTimeout(() => {
+        if (window.location.pathname !== '/signup') {
+          console.log('Router.push did not navigate, using window.location.href')
+          window.location.href = '/signup'
+        }
+      }, 500)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
       console.error('Signup click error:', err)
       setError(`新規登録エラー: ${errorMessage}`)
       
       // フォールバック: 直接ナビゲーション
-      setTimeout(() => {
-        window.location.href = '/signup'
-      }, 100)
+      window.location.href = '/signup'
     }
   }
 
