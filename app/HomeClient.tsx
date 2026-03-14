@@ -17,13 +17,15 @@ export function HomeClient() {
     console.log('HomeClient mounted, router available:', !!router)
   }, [router])
 
-  const handleLoginClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleLoginClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
+    e.stopPropagation()
     console.log('Login button clicked, using window.location.href')
     setError(null)
     
     // 直接window.location.hrefを使用（最も確実な方法）
     try {
+      console.log('Navigating to /login')
       window.location.href = '/login'
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
@@ -32,13 +34,15 @@ export function HomeClient() {
     }
   }
 
-  const handleSignupClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleSignupClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
+    e.stopPropagation()
     console.log('Signup button clicked, using window.location.href')
     setError(null)
     
     // 直接window.location.hrefを使用（最も確実な方法）
     try {
+      console.log('Navigating to /signup')
       window.location.href = '/signup'
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
@@ -74,20 +78,20 @@ export function HomeClient() {
         )}
 
         <div className="flex justify-center gap-4">
-          <a
-            href="/login"
+          <button
+            type="button"
             onClick={handleLoginClick}
             className="inline-flex items-center justify-center px-6 py-3 text-lg font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white focus:ring-pink-500 cursor-pointer"
           >
             ログイン
-          </a>
-          <a
-            href="/signup"
+          </button>
+          <button
+            type="button"
             onClick={handleSignupClick}
             className="inline-flex items-center justify-center px-6 py-3 text-lg font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer"
           >
             新規登録
-          </a>
+          </button>
         </div>
 
         {/* デバッグ情報（開発環境のみ） */}
