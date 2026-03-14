@@ -5,22 +5,57 @@
 "use client"
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export function HomeClient() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [isMounted, setIsMounted] = useState(false)
+  const loginButtonRef = useRef<HTMLButtonElement>(null)
+  const signupButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     setIsMounted(true)
     console.log('HomeClient mounted, router available:', !!router)
+    
+    // 直接イベントリスナーを追加（より確実）
+    const loginButton = loginButtonRef.current
+    const signupButton = signupButtonRef.current
+    
+    const handleLogin = () => {
+      console.log('Login button clicked (via ref), navigating to /login')
+      window.location.href = '/login'
+    }
+    
+    const handleSignup = () => {
+      console.log('Signup button clicked (via ref), navigating to /signup')
+      window.location.href = '/signup'
+    }
+    
+    if (loginButton) {
+      loginButton.addEventListener('click', handleLogin)
+      console.log('Login button event listener added')
+    }
+    
+    if (signupButton) {
+      signupButton.addEventListener('click', handleSignup)
+      console.log('Signup button event listener added')
+    }
+    
+    return () => {
+      if (loginButton) {
+        loginButton.removeEventListener('click', handleLogin)
+      }
+      if (signupButton) {
+        signupButton.removeEventListener('click', handleSignup)
+      }
+    }
   }, [router])
 
   const handleLoginClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('Login button clicked, using window.location.href')
+    console.log('Login button clicked (via onClick), using window.location.href')
     setError(null)
     
     // 直接window.location.hrefを使用（最も確実な方法）
@@ -37,7 +72,7 @@ export function HomeClient() {
   const handleSignupClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
     e.stopPropagation()
-    console.log('Signup button clicked, using window.location.href')
+    console.log('Signup button clicked (via onClick), using window.location.href')
     setError(null)
     
     // 直接window.location.hrefを使用（最も確実な方法）
@@ -79,6 +114,7 @@ export function HomeClient() {
 
         <div className="flex justify-center gap-4">
           <button
+            ref={loginButtonRef}
             type="button"
             onClick={handleLoginClick}
             className="inline-flex items-center justify-center px-6 py-3 text-lg font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600 text-white focus:ring-pink-500 cursor-pointer"
@@ -86,6 +122,7 @@ export function HomeClient() {
             ログイン
           </button>
           <button
+            ref={signupButtonRef}
             type="button"
             onClick={handleSignupClick}
             className="inline-flex items-center justify-center px-6 py-3 text-lg font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 border-2 border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800 cursor-pointer"
