@@ -5,18 +5,88 @@
 "use client"
 
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 
 export function HomeClient() {
   const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+    console.log('HomeClient mounted, router available:', !!router)
+  }, [router])
 
   const handleLoginClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault()
-    router.push('/login')
+    try {
+      e.preventDefault()
+      console.log('Login button clicked')
+      setError(null)
+      
+      if (!router) {
+        throw new Error('Router is not available')
+      }
+
+      // 複数の方法を試す
+      try {
+        router.push('/login')
+        console.log('Router.push called for /login')
+      } catch (routerError) {
+        console.error('Router.push error:', routerError)
+        // フォールバック: window.locationを使用
+        window.location.href = '/login'
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      console.error('Login click error:', err)
+      setError(`ログインエラー: ${errorMessage}`)
+      
+      // フォールバック: 直接ナビゲーション
+      setTimeout(() => {
+        window.location.href = '/login'
+      }, 100)
+    }
   }
 
   const handleSignupClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault()
-    router.push('/signup')
+    try {
+      e.preventDefault()
+      console.log('Signup button clicked')
+      setError(null)
+      
+      if (!router) {
+        throw new Error('Router is not available')
+      }
+
+      // 複数の方法を試す
+      try {
+        router.push('/signup')
+        console.log('Router.push called for /signup')
+      } catch (routerError) {
+        console.error('Router.push error:', routerError)
+        // フォールバック: window.locationを使用
+        window.location.href = '/signup'
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      console.error('Signup click error:', err)
+      setError(`新規登録エラー: ${errorMessage}`)
+      
+      // フォールバック: 直接ナビゲーション
+      setTimeout(() => {
+        window.location.href = '/signup'
+      }, 100)
+    }
+  }
+
+  if (!isMounted) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-pink-50 via-purple-50 to-white dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <main className="mx-auto max-w-4xl px-4 py-16 text-center">
+          <p className="text-gray-600 dark:text-gray-400">読み込み中...</p>
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -28,6 +98,13 @@ export function HomeClient() {
         <p className="mb-8 text-xl text-gray-600 dark:text-gray-400">
           あなただけの推しノートを作成・管理するアプリケーション
         </p>
+        
+        {error && (
+          <div className="mb-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-sm text-red-600 dark:text-red-400">
+            {error}
+          </div>
+        )}
+
         <div className="flex justify-center gap-4">
           <a
             href="/login"
@@ -44,6 +121,14 @@ export function HomeClient() {
             新規登録
           </a>
         </div>
+
+        {/* デバッグ情報（開発環境のみ） */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-8 text-xs text-gray-500 dark:text-gray-400">
+            <p>Router available: {router ? 'Yes' : 'No'}</p>
+            <p>Mounted: {isMounted ? 'Yes' : 'No'}</p>
+          </div>
+        )}
       </main>
     </div>
   )
