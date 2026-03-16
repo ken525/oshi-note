@@ -16,9 +16,9 @@ export default async function Home() {
       data: { user },
     } = await supabase.auth.getUser()
 
-    // 認証済みユーザーはダッシュボードにリダイレクト
+    // 認証済みユーザーは記事一覧ページ（ダッシュボード）にリダイレクト
     if (user) {
-      redirect('/oshi')
+      redirect('/')
     }
   } catch (error) {
     // 環境変数が設定されていない場合など、エラーが発生してもランディングページを表示

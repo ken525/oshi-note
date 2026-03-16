@@ -31,6 +31,7 @@ interface OshiFormProps {
 export function OshiForm({ oshi, onSuccess }: OshiFormProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [keywords, setKeywords] = useState<string[]>(oshi?.keywords || [])
   const [keywordInput, setKeywordInput] = useState("")
   const [iconFile, setIconFile] = useState<File | null>(null)
@@ -152,26 +153,20 @@ export function OshiForm({ oshi, onSuccess }: OshiFormProps) {
         }
       }
 
-      let iconUrl = oshi?.icon_url || null
-
-      // 画像をアップロード
-      if (iconFile) {
-        const uploadedUrl = await uploadIcon(user.id, oshi?.id || "temp")
-        if (uploadedUrl) {
-          iconUrl = uploadedUrl
-        }
-      }
-
-      const oshiData = {
-        name: data.name,
-        group_name: data.group_name || null,
-        keywords: keywords,
-        icon_url: iconUrl,
-        user_id: user.id,
-      }
-
       if (oshi) {
         // 更新
+        let iconUrl = oshi.icon_url || null
+        if (iconFile) {
+          const uploadedUrl = await uploadIcon(user.id, oshi.id)
+          if (uploadedUrl) iconUrl = uploadedUrl
+        }
+        const oshiData = {
+          name: data.name,
+          group_name: data.group_name || null,
+          keywords: keywords,
+          icon_url: iconUrl,
+          user_id: user.id,
+        }
         // @ts-ignore - Supabase型定義の問題を回避
         const { error: updateError } = await (supabase
           .from("oshi")
@@ -180,20 +175,57 @@ export function OshiForm({ oshi, onSuccess }: OshiFormProps) {
           .eq("user_id", user.id) as any)
 
         if (updateError) throw updateError
-      } else {
-        // 新規作成
-        // @ts-ignore - Supabase型定義の問題を回避
-        const { error: insertError } = await (supabase.from("oshi").insert(oshiData as any) as any)
-
-        if (insertError) throw insertError
+        if (onSuccess) {
+          onSuccess()
+        } else {
+          router.push("/oshi")
+          router.refresh()
+        }
+        return
       }
 
-      if (onSuccess) {
-        onSuccess()
-      } else {
-        router.push("/oshi")
+      // 新規作成: API経由で登録（バックグラウンドで記事生成がキックされる）
+      const res = await fetch("/api/oshi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          name: data.name,
+          group_name: data.group_name || null,
+          keywords: keywords,
+          icon_url: null,
+        }),
+      })
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        if (res.status === 403) {
+          setShowUpgradeModal(true)
+          return
+        }
+        throw new Error((errData as any).error || "登録に失敗しました")
+      }
+
+      const { data: newOshi } = await res.json()
+      const newId = (newOshi as any)?.id
+      if (!newId) throw new Error("登録後のデータを取得できませんでした")
+
+      if (iconFile) {
+        const uploadedUrl = await uploadIcon(user.id, newId)
+        if (uploadedUrl) {
+          await supabase
+            .from("oshi")
+            .update({ icon_url: uploadedUrl })
+            .eq("id", newId)
+            .eq("user_id", user.id)
+        }
+      }
+
+      setToastMessage("🎀 推しノートを準備中...")
+      setTimeout(() => {
+        router.push(`/oshi/${newId}/articles`)
         router.refresh()
-      }
+      }, 1500)
     } catch (err: any) {
       setError(err.message || "エラーが発生しました")
     } finally {
@@ -202,7 +234,17 @@ export function OshiForm({ oshi, onSuccess }: OshiFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <>
+      {toastMessage && (
+        <div
+          className="fixed left-1/2 top-6 z-50 -translate-x-1/2 rounded-lg border border-pink-200 dark:border-pink-800 bg-pink-50 dark:bg-pink-900/30 px-6 py-3 text-center text-pink-800 dark:text-pink-200 shadow-lg"
+          role="status"
+          aria-live="polite"
+        >
+          {toastMessage}
+        </div>
+      )}
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
         <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-sm text-red-600 dark:text-red-400">
           {error}
@@ -350,5 +392,6 @@ export function OshiForm({ oshi, onSuccess }: OshiFormProps) {
         onClose={() => setShowUpgradeModal(false)}
       />
     </form>
+    </>
   )
 }

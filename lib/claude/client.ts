@@ -4,6 +4,14 @@
  */
 import Anthropic from '@anthropic-ai/sdk'
 
-export const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-})
+const apiKey = process.env.ANTHROPIC_API_KEY
+
+if (!apiKey) {
+  console.warn('ANTHROPIC_API_KEY is not set. Claude API features will not work.')
+}
+
+export const anthropic = apiKey
+  ? new Anthropic({
+      apiKey,
+    })
+  : null

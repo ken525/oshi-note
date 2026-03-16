@@ -3,13 +3,7 @@
  * Claude APIへのプロンプトを生成
  */
 
-interface RawPost {
-  source: 'twitter' | 'instagram' | 'tiktok' | 'youtube' | 'website'
-  original_url: string
-  content: string
-  posted_at: string | Date | null
-  metadata?: any
-}
+import type { CollectedPost } from '@/types/collector'
 
 interface OshiInfo {
   name: string
@@ -18,94 +12,101 @@ interface OshiInfo {
 
 /**
  * システムプロンプト
- * アイドルファン向けの温かみのある日本語文体で記事を生成
+ * 熱狂的なアイドルファン目線で、具体的でエモい記事を生成
  */
-export const SYSTEM_PROMPT = `あなたはアイドルファン向けの記事を書くライターです。
-以下の要件に従って、温かみのある日本語で記事を作成してください。
+export const SYSTEM_PROMPT = `あなたは熱狂的なアイドルファンであり、文章が得意なオタクです。
+収集したSNS情報をもとに「推しノート」を書いてください。
 
-【文体の要件】
-- ファンとして一緒に喜ぶような感情表現を使用
-- 絵文字を適切に使用（過度に使用しない）
-- 親しみやすく、温かみのある表現
-- アイドルへの愛情と応援の気持ちを込める
+【文体・トーン】
+- ファン目線の熱量ある日本語（例：「無理すぎる」「泣いた」「天才」）
+- 絵文字を自然に使う（多すぎず、少なすぎず）
+- SNSの実際の投稿を引用・言及して臨場感を出す
+- 読んだ人が「わかる！」「シェアしたい！」と思える共感ポイントを必ず入れる
+- 抽象的な表現（「素敵な笑顔」等）は禁止。具体的な出来事ベースで書く
 
-【記事の構成】
-1. タイトル: キャッチーで感情的、読者の興味を引く
-2. ハイライト: 3〜5個の箇条書きで重要なポイントをまとめる
-3. 本文: 見出しつきMarkdown形式、500〜800文字
-   - 導入部: 推しの名前やグループ名を自然に含める
-   - 本文: 収集した情報を基に、ファン目線で解説
-   - まとめ: 応援メッセージを含める
-4. 情報ソースリンク: 収集元のURLとラベルを一覧化
+【記事構成】
+1. 今日のつかみ（1〜2行、インパクト重視）
+2. 今日のトピック（SNSごとに具体的な出来事を引用つきで）
+3. ファンの反応（RT数・いいね数・コメント傾向など数字を使う）
+4. 編集部コメント（ファン目線の感想・明日への期待）
+
+【禁止事項】
+- 「素敵な」「明るく元気な」などの抽象的な形容詞だけの表現
+- 収集データに存在しない情報の捏造
+- 無難でつまらないまとめ方
 
 【出力形式】
-以下のJSON形式で出力してください：
+必ずJSON形式のみで返すこと。前後に余計なテキスト・Markdownコードブロック不要。
 {
-  "title": "記事タイトル",
-  "highlights": ["ハイライト1", "ハイライト2", "ハイライト3"],
+  "title": "思わずRTしたくなるキャッチーなタイトル",
+  "highlights": ["具体的なハイライト1", "ハイライト2", "ハイライト3"],
   "content": "Markdown形式の本文",
-  "source_links": [
-    {"label": "ソース名（例: Twitter投稿）", "url": "URL"}
-  ]
+  "source_links": [{"label": "ソース名", "url": "URL"}]
 }`
 
 /**
  * ユーザープロンプトを生成
+ * 収集したSNSデータを具体的なフォーマットでClaudeに渡す
  */
-export function generateUserPrompt(oshi: OshiInfo, rawPosts: RawPost[]): string {
+export function generateUserPrompt(oshi: OshiInfo, posts: CollectedPost[]): string {
   const oshiName = oshi.name
   const groupName = oshi.group_name ? `（${oshi.group_name}）` : ''
-  
-  let prompt = `【推し情報】
-名前: ${oshiName}${groupName}
+  const today = new Date().toISOString().split('T')[0]
 
-【収集した情報】
-以下の情報を基に、推しに関する記事を作成してください。
+  // ソースごとにグループ化
+  const postsBySource = posts.reduce((acc, post) => {
+    if (!acc[post.source]) acc[post.source] = []
+    acc[post.source].push(post)
+    return acc
+  }, {} as Record<string, CollectedPost[]>)
 
-`
+  // 各ソースごとに詳細情報を整形
+  const sections = Object.entries(postsBySource).map(([source, sourcePosts]) => {
+    const sourceLabel = {
+      twitter: 'X（Twitter）',
+      instagram: 'Instagram',
+      tiktok: 'TikTok',
+      youtube: 'YouTube',
+      website: '公式サイト'
+    }[source as CollectedPost['source']] || source
 
-  // 各ソースごとに情報を整理
-  const postsBySource: Record<string, RawPost[]> = {}
-  for (const post of rawPosts) {
-    if (!postsBySource[post.source]) {
-      postsBySource[post.source] = []
-    }
-    postsBySource[post.source].push(post)
-  }
+    const postDetails = sourcePosts.map(p => {
+      const postedAt = new Date(p.postedAt).toLocaleString('ja-JP', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
 
-  // ソースごとに情報を表示
-  for (const [source, posts] of Object.entries(postsBySource)) {
-    const sourceLabel = getSourceLabel(source as RawPost['source'])
-    prompt += `\n## ${sourceLabel}\n\n`
-    
-    for (const post of posts) {
-      const postedAt = post.posted_at 
-        ? (typeof post.posted_at === 'string' ? new Date(post.posted_at) : post.posted_at)
-        : null
-      prompt += `- **投稿日時**: ${postedAt ? postedAt.toLocaleString('ja-JP') : '不明'}\n`
-      prompt += `- **URL**: ${post.original_url}\n`
-      prompt += `- **内容**: ${post.content.substring(0, 500)}${post.content.length > 500 ? '...' : ''}\n\n`
-    }
-  }
+      let detail = `- 投稿内容: "${p.content}"\n`
+      detail += `- URL: ${p.url}\n`
+      detail += `- 投稿日時: ${postedAt}\n`
+      
+      if (p.metrics.likes) {
+        detail += `- いいね数: ${p.metrics.likes.toLocaleString()}\n`
+      }
+      if (p.metrics.retweets) {
+        detail += `- RT数: ${p.metrics.retweets.toLocaleString()}\n`
+      }
+      if (p.metrics.views) {
+        detail += `- 再生数: ${p.metrics.views.toLocaleString()}回\n`
+      }
+      if (p.metrics.comments) {
+        detail += `- コメント数: ${p.metrics.comments.toLocaleString()}\n`
+      }
+      if (p.mediaUrls && p.mediaUrls.length > 0) {
+        detail += `- メディア: ${p.mediaUrls.length}件\n`
+      }
 
-  prompt += `\n【記事作成の指示】
-上記の情報を基に、推し「${oshiName}${groupName}」に関する記事を作成してください。
-複数のソースから情報を統合し、ファンが喜ぶような内容にしてください。
-重複する情報はまとめて、重要なポイントをハイライトとして抽出してください。`
+      return detail.trim()
+    }).join('\n\n')
 
-  return prompt
-}
+    return `【${sourceLabel}】\n${postDetails}`
+  })
 
-/**
- * ソース名を日本語ラベルに変換
- */
-function getSourceLabel(source: RawPost['source']): string {
-  const labels: Record<RawPost['source'], string> = {
-    twitter: 'Twitter',
-    instagram: 'Instagram',
-    tiktok: 'TikTok',
-    youtube: 'YouTube',
-    website: '公式サイト',
-  }
-  return labels[source] || source
+  return `【推し名】${oshiName}${groupName}
+【対象日】${today}
+
+${sections.join('\n\n')}`
 }

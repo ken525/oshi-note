@@ -2,18 +2,11 @@
  * AI記事生成ロジック
  * Claude APIを使用して推しノート記事を生成
  */
+import { createClient } from '@/lib/supabase/server'
 import { anthropic } from '@/lib/claude/client'
 import { SYSTEM_PROMPT, generateUserPrompt } from './prompts'
-import type { Oshi } from '@/types'
-
-interface RawPost {
-  source: 'twitter' | 'instagram' | 'tiktok' | 'youtube' | 'website'
-  original_url: string
-  content: string
-  posted_at: string | Date | null
-  collected_at: string | Date
-  metadata?: any
-}
+import type { Oshi, RawPost } from '@/types'
+import type { CollectedPost } from '@/types/collector'
 
 interface GeneratedArticle {
   title: string
@@ -33,6 +26,33 @@ export class ArticleGenerator {
   private maxTokens: number = 4000
 
   /**
+   * RawPostをCollectedPostに変換
+   * 注意: 現在のデータベーススキーマにはmetadataカラムがないため、
+   * メトリクス情報は将来的に追加されることを想定
+   */
+  private convertToCollectedPost(rawPost: RawPost & { metadata?: any }): CollectedPost {
+    // metadataが存在する場合（将来的な拡張やテストデータ用）
+    const metadata = rawPost.metadata || {}
+    const postedAt = rawPost.posted_at
+      ? (typeof rawPost.posted_at === 'string' ? rawPost.posted_at : rawPost.posted_at.toISOString())
+      : new Date().toISOString()
+
+    return {
+      source: rawPost.source,
+      content: rawPost.content,
+      url: rawPost.original_url,
+      postedAt,
+      metrics: {
+        likes: metadata.likes || metadata.favorite_count || undefined,
+        retweets: metadata.retweets || metadata.retweet_count || undefined,
+        views: metadata.views || metadata.view_count || undefined,
+        comments: metadata.comments || metadata.reply_count || undefined,
+      },
+      mediaUrls: metadata.media_urls || metadata.mediaUrls || undefined,
+    }
+  }
+
+  /**
    * 推しの情報を基に記事を生成
    */
   async generate(oshi: Oshi, rawPosts: RawPost[]): Promise<ArticleGenerationResult> {
@@ -44,27 +64,85 @@ export class ArticleGenerator {
     }
 
     try {
+      // Claude APIクライアントの確認
+      if (!anthropic) {
+        return {
+          success: false,
+          error: 'ANTHROPIC_API_KEYが設定されていません。.env.localファイルにANTHROPIC_API_KEYを設定してください。',
+        }
+      }
+
+      // RawPostをCollectedPostに変換
+      const collectedPosts: CollectedPost[] = rawPosts.map(post => this.convertToCollectedPost(post))
+
       // プロンプトを生成
       const userPrompt = generateUserPrompt(
         {
           name: oshi.name,
           group_name: oshi.group_name,
         },
-        rawPosts
+        collectedPosts
       )
 
       // Claude APIを呼び出し
-      const response = await anthropic.messages.create({
-        model: this.model,
-        max_tokens: this.maxTokens,
-        system: SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: userPrompt,
-          },
-        ],
-      })
+      let response
+      try {
+        response = await anthropic.messages.create({
+          model: this.model,
+          max_tokens: this.maxTokens,
+          system: SYSTEM_PROMPT,
+          messages: [
+            {
+              role: 'user',
+              content: userPrompt,
+            },
+          ],
+        })
+      } catch (apiError: any) {
+        // APIエラーを分かりやすく処理
+        console.error('Claude API Error:', {
+          status: apiError.status,
+          message: apiError.message,
+          error: apiError.error,
+          fullError: apiError,
+        })
+        
+        const errorMessage = apiError.message || String(apiError)
+        const errorBody = apiError.error || {}
+        const errorType = errorBody.type || ''
+        const errorDetail = errorBody.message || errorMessage
+        
+        // クレジット残高不足のエラー
+        if (
+          errorMessage.includes('credit balance') ||
+          errorMessage.includes('too low') ||
+          errorDetail.includes('credit balance') ||
+          errorDetail.includes('too low')
+        ) {
+          return {
+            success: false,
+            error: 'Anthropic APIのクレジット残高が不足しています。クレジットを追加した場合は、数分待ってから再度お試しください。https://console.anthropic.com で残高を確認してください。',
+          }
+        }
+        
+        // 認証エラー
+        if (
+          errorMessage.includes('invalid x-api-key') ||
+          errorMessage.includes('authentication') ||
+          errorType.includes('authentication')
+        ) {
+          return {
+            success: false,
+            error: 'Anthropic APIキーが無効です。.env.localファイルのANTHROPIC_API_KEYを確認してください。',
+          }
+        }
+        
+        // その他のエラー
+        return {
+          success: false,
+          error: `Anthropic APIエラー: ${errorDetail || errorMessage}`,
+        }
+      }
 
       // レスポンスからテキストを取得
       const text = this.extractTextFromResponse(response)
@@ -77,12 +155,18 @@ export class ArticleGenerator {
       }
 
       // JSON形式でパース
-      const article = this.parseArticleResponse(text)
-
-      if (!article) {
+      let article: GeneratedArticle
+      try {
+        const parsed = this.parseArticleResponse(text)
+        if (!parsed) {
+          throw new Error('記事のパース結果がnullです')
+        }
+        article = parsed
+      } catch (parseError: any) {
+        console.error('Parse error:', parseError)
         return {
           success: false,
-          error: '記事のパースに失敗しました',
+          error: parseError.message || '記事のパースに失敗しました',
         }
       }
 
@@ -117,30 +201,28 @@ export class ArticleGenerator {
 
   /**
    * Claude APIの応答をパースして記事データを取得
+   * JSONコードブロックを除去してからパース
    */
   private parseArticleResponse(text: string): GeneratedArticle | null {
     try {
-      // JSONコードブロックを探す
-      const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || 
-                       text.match(/```\s*([\s\S]*?)\s*```/)
-
+      // ```json ... ``` のコードブロックを除去
+      let cleaned = text.replace(/```json\n?/g, '').replace(/\n?```/g, '').trim()
+      
+      // 前後の余計なテキストを除去（JSONオブジェクトのみを抽出）
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
-        const jsonText = jsonMatch[1].trim()
-        const parsed = JSON.parse(jsonText)
-        return this.validateArticle(parsed)
+        cleaned = jsonMatch[0]
       }
 
-      // JSONコードブロックがない場合、直接JSONとしてパースを試行
-      try {
-        const parsed = JSON.parse(text.trim())
-        return this.validateArticle(parsed)
-      } catch {
-        // JSONとしてパースできない場合、テキストから情報を抽出
-        return this.extractArticleFromText(text)
-      }
+      // JSONとしてパース
+      const parsed = JSON.parse(cleaned)
+      return this.validateArticle(parsed)
     } catch (error) {
-      console.error('Failed to parse article response:', error)
-      return null
+      console.error('Article JSON parse error:', error)
+      console.error('Raw response:', text)
+      
+      // パース失敗時はエラーを投げる（フォールバックは呼び出し側で処理）
+      throw new Error('記事の生成に失敗しました: JSONパースエラー')
     }
   }
 
@@ -212,6 +294,113 @@ export class ArticleGenerator {
       highlights: highlights.length > 0 ? highlights : ['重要なポイント'],
       content: content || '記事の内容',
       source_links,
+    }
+  }
+}
+
+/**
+ * 指定日の記事を1本生成してDBに保存する
+ * raw_postsにその日のデータがなければダミーデータで生成
+ */
+export async function generateArticleForDate(oshiId: string, date: string): Promise<void> {
+  const supabase = await createClient()
+
+  const { data: oshi, error: oshiError } = await supabase
+    .from('oshi')
+    .select('*')
+    .eq('id', oshiId)
+    .single()
+
+  if (oshiError || !oshi) {
+    console.error(`[generateArticleForDate] oshi not found: ${oshiId}`, oshiError)
+    return
+  }
+
+  const dayStart = `${date}T00:00:00.000Z`
+  const dayEnd = `${date}T23:59:59.999Z`
+
+  const { data: rawPosts } = await supabase
+    .from('raw_posts')
+    .select('*')
+    .eq('oshi_id', oshiId)
+    .gte('collected_at', dayStart)
+    .lte('collected_at', dayEnd)
+
+  const posts: RawPost[] =
+    Array.isArray(rawPosts) && rawPosts.length > 0
+      ? (rawPosts as RawPost[])
+      : createDummyRawPostsForDate(oshiId, date)
+
+  const generator = new ArticleGenerator()
+  const result = await generator.generate(oshi as Oshi, posts)
+  if (!result.success || !result.article) {
+    console.error(`[generateArticleForDate] generation failed for ${oshiId} ${date}:`, result.error)
+    return
+  }
+
+  const { data: existing } = await supabase
+    .from('articles')
+    .select('id')
+    .eq('oshi_id', oshiId)
+    .eq('user_id', (oshi as any).user_id)
+    .eq('published_date', date)
+    .maybeSingle()
+
+  if (existing) return
+
+  await supabase.from('articles').insert({
+    user_id: (oshi as any).user_id,
+    oshi_id: oshiId,
+    title: result.article.title,
+    content: result.article.content,
+    highlights: result.article.highlights,
+    source_links: result.article.source_links,
+    published_date: date,
+  } as any)
+}
+
+function createDummyRawPostsForDate(oshiId: string, date: string): RawPost[] {
+  const base = `${date}T12:00:00.000Z`
+  return [
+    {
+      id: `dummy-${oshiId}-${date}-1`,
+      oshi_id: oshiId,
+      source: 'twitter',
+      original_url: 'https://x.com/example/status/1',
+      content: '推しの近況やファンへの感謝の気持ちをまとめたダミー投稿です。',
+      posted_at: base,
+      collected_at: base,
+      metadata: { likes: 100, retweets: 10 },
+    },
+    {
+      id: `dummy-${oshiId}-${date}-2`,
+      oshi_id: oshiId,
+      source: 'website',
+      original_url: 'https://example.com/news/1',
+      content: '公式お知らせやイベント情報のダミーです。',
+      posted_at: base,
+      collected_at: base,
+      metadata: {},
+    },
+  ] as RawPost[]
+}
+
+/**
+ * 推し登録時に直近3日分の記事を自動生成する
+ */
+export async function generateInitialArticles(oshiId: string): Promise<void> {
+  const today = new Date()
+  const dates = [0, 1, 2].map((i) => {
+    const d = new Date(today)
+    d.setDate(d.getDate() - i)
+    return d.toISOString().split('T')[0]
+  })
+
+  for (const date of dates) {
+    try {
+      await generateArticleForDate(oshiId, date)
+    } catch (err) {
+      console.error(`[generateInitialArticles] failed for ${oshiId} ${date}:`, err)
     }
   }
 }

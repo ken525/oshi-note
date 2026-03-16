@@ -6,6 +6,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { generateInitialArticles } from "@/lib/ai/articleGenerator"
 
 export async function GET(request: NextRequest) {
   try {
@@ -78,6 +79,13 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) throw error
+
+    const oshiId = (data as any)?.id
+    if (oshiId) {
+      generateInitialArticles(oshiId).catch((err) =>
+        console.error("[api/oshi] generateInitialArticles failed:", err)
+      )
+    }
 
     return NextResponse.json({ data }, { status: 201 })
   } catch (error: any) {

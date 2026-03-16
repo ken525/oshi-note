@@ -16,7 +16,7 @@ export default function DashboardLayout({
       <nav className="border-b border-pink-100 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
-            <Link href="/oshi" className="flex items-center" aria-label="ダッシュボードに戻る">
+            <Link href="/" className="flex items-center" aria-label="ダッシュボードに戻る">
               <h1 className="text-xl font-bold bg-gradient-to-r from-pink-500 to-purple-500 bg-clip-text text-transparent">
                 私だけの推しノート
               </h1>

@@ -32,8 +32,8 @@ export function OshiCard({ oshi, onDelete }: OshiCardProps) {
 
   return (
     <Link 
-      href={`/oshi/${oshi.id}/edit`}
-      className="group relative block overflow-hidden rounded-2xl bg-gradient-to-br from-pink-500 via-purple-500 to-pink-600 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 cursor-pointer"
+      href={`/oshi/${oshi.id}/articles`}
+      className="group relative block overflow-hidden rounded-2xl bg-gradient-to-br from-pink-500 via-purple-500 to-pink-600 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 cursor-pointer"
     >
       {/* 背景グラデーションオーバーレイ */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
@@ -129,6 +129,12 @@ export function OshiCard({ oshi, onDelete }: OshiCardProps) {
             )}
           </div>
         )}
+
+        {/* ノートを見る導線 */}
+        <p className="mt-4 flex items-center gap-1 text-sm font-medium text-white/90">
+          ノートを見る
+          <span className="transition-transform group-hover:translate-x-1">→</span>
+        </p>
       </div>
 
       {/* ホバー時のエフェクト */}

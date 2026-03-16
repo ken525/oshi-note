@@ -46,9 +46,12 @@ export async function updateSession(request: NextRequest) {
 
   const url = request.nextUrl.clone()
   const pathname = url.pathname
+  const isTestApi = pathname.startsWith('/api/test')
 
-  // デバッグログ（本番環境でも確認できるように）
-  console.log('[Middleware] Path:', pathname, 'User:', !!user, 'Error:', userError?.message)
+  // デバッグログ（テストAPIはログを出さない）
+  if (!isTestApi) {
+    console.log('[Middleware] Path:', pathname, 'User:', !!user, 'Error:', userError?.message)
+  }
 
   // 認証が必要なルート（ダッシュボード配下、推し、記事、アーカイブ、設定など）
   const protectedRoutes = ['/oshi', '/articles', '/archive', '/settings']
@@ -83,10 +86,10 @@ export async function updateSession(request: NextRequest) {
 
   // パブリックルートへのアクセスを許可
   if (isPublicRoute) {
-    console.log('[Middleware] Allowing access to', pathname, '(public route)')
+    if (!isTestApi) console.log('[Middleware] Allowing access to', pathname, '(public route)')
     return supabaseResponse
   }
 
-  console.log('[Middleware] Allowing access to', pathname)
+  if (!isTestApi) console.log('[Middleware] Allowing access to', pathname)
   return supabaseResponse
 }
