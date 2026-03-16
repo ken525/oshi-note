@@ -71,6 +71,7 @@ export default function PlanPage() {
     try {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
+        credentials: "include",
       })
 
       if (!response.ok) {
@@ -198,6 +199,7 @@ export default function PlanPage() {
             "優先サポート",
           ]}
           isCurrent={currentPlan === "standard"}
+          onUpgrade={handleUpgrade}
           onCancel={handleCancel}
           isLoading={isProcessing}
         />
