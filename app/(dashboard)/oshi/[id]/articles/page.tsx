@@ -107,19 +107,19 @@ export default function OshiArticlesPage() {
         const json = await res.json()
 
         if (!res.ok) {
-          // 既に記事がある場合はリフレッシュ
-          if (res.status === 200) {
-            const fetched = await fetchArticles()
-            setArticles(fetched)
-          } else {
-            setGenerateError(json.error || "記事の生成に失敗しました")
-          }
+          setGenerateError(
+            json.error ||
+              "記事の生成に失敗しました。時間をおいてから再度お試しください。"
+          )
+          return
         } else {
-          // 生成完了後に記事を再取得
+          // 既に記事がある場合 or 生成完了後に記事を再取得
           const fetched = await fetchArticles()
           setArticles(fetched)
           if (fetched.length === 0) {
-            setGenerateError("記事の生成に失敗しました。しばらくして再度お試しください。")
+            setGenerateError(
+              "記事の生成に失敗しました。しばらくして再度お試しください。"
+            )
           }
         }
       } catch (err: any) {

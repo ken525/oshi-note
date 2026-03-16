@@ -358,8 +358,12 @@ export class ArticleGenerator {
 /**
  * 指定日の記事を1本生成してDBに保存する
  * raw_postsにその日のデータがなければダミーデータで生成
+ * 呼び出し元に成功/失敗とエラーメッセージを返す
  */
-export async function generateArticleForDate(oshiId: string, date: string): Promise<void> {
+export async function generateArticleForDate(
+  oshiId: string,
+  date: string
+): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
 
   const { data: oshi, error: oshiError } = await supabase
@@ -369,8 +373,9 @@ export async function generateArticleForDate(oshiId: string, date: string): Prom
     .single()
 
   if (oshiError || !oshi) {
-    console.error(`[generateArticleForDate] oshi not found: ${oshiId}`, oshiError)
-    return
+    const message = `[generateArticleForDate] oshi not found: ${oshiId}`
+    console.error(message, oshiError)
+    return { success: false, error: '推しが見つかりません' }
   }
 
   const dayStart = `${date}T00:00:00.000Z`
@@ -391,8 +396,14 @@ export async function generateArticleForDate(oshiId: string, date: string): Prom
   const generator = new ArticleGenerator()
   const result = await generator.generate(oshi as Oshi, posts)
   if (!result.success || !result.article) {
-    console.error(`[generateArticleForDate] generation failed for ${oshiId} ${date}:`, result.error)
-    return
+    console.error(
+      `[generateArticleForDate] generation failed for ${oshiId} ${date}:`,
+      result.error
+    )
+    return {
+      success: false,
+      error: result.error || '記事生成に失敗しました',
+    }
   }
 
   const { data: existing } = await supabase
@@ -403,7 +414,9 @@ export async function generateArticleForDate(oshiId: string, date: string): Prom
     .eq('published_date', date)
     .maybeSingle()
 
-  if (existing) return
+  if (existing) {
+    return { success: true }
+  }
 
   await supabase.from('articles').insert({
     user_id: (oshi as any).user_id,
@@ -414,6 +427,8 @@ export async function generateArticleForDate(oshiId: string, date: string): Prom
     source_links: result.article.source_links,
     published_date: date,
   } as any)
+
+  return { success: true }
 }
 
 function createDummyRawPostsForDate(oshiId: string, date: string): RawPost[] {
@@ -455,7 +470,13 @@ export async function generateInitialArticles(oshiId: string): Promise<void> {
 
   for (const date of dates) {
     try {
-      await generateArticleForDate(oshiId, date)
+      const result = await generateArticleForDate(oshiId, date)
+      if (!result.success) {
+        console.error(
+          `[generateInitialArticles] generation failed for ${oshiId} ${date}:`,
+          result.error
+        )
+      }
     } catch (err) {
       console.error(`[generateInitialArticles] failed for ${oshiId} ${date}:`, err)
     }

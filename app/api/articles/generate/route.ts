@@ -66,15 +66,38 @@ export async function POST(request: NextRequest) {
 
     for (const targetDate of dates) {
       try {
-        await generateArticleForDate(oshiId, targetDate)
-        results.push({ date: targetDate, success: true })
+        const result = await generateArticleForDate(oshiId, targetDate)
+        results.push({
+          date: targetDate,
+          success: result.success,
+          error: result.error,
+        })
       } catch (err: any) {
         console.error(`[api/articles/generate] failed for ${targetDate}:`, err)
-        results.push({ date: targetDate, success: false, error: err.message })
+        results.push({
+          date: targetDate,
+          success: false,
+          error: err.message || "予期せぬエラーが発生しました",
+        })
       }
     }
 
     const successCount = results.filter((r) => r.success).length
+
+    // 全て失敗した場合は 500 として最初のエラー内容を返す
+    if (successCount === 0) {
+      const firstError = results.find((r) => !r.success && r.error)?.error
+      return NextResponse.json(
+        {
+          error:
+            firstError ||
+            "記事の生成に失敗しました。時間をおいてから再度お試しください。",
+          results,
+        },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json({ generated: successCount, results })
   } catch (error: any) {
     console.error("[api/articles/generate] error:", error)
