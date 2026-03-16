@@ -21,6 +21,7 @@ export interface Database {
           nickname: string | null
           avatar_url: string | null
           plan: 'free' | 'standard'
+          last_active_at: string | null
           created_at: string
           updated_at: string
         }
@@ -29,6 +30,7 @@ export interface Database {
           nickname?: string | null
           avatar_url?: string | null
           plan?: 'free' | 'standard'
+          last_active_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -37,6 +39,7 @@ export interface Database {
           nickname?: string | null
           avatar_url?: string | null
           plan?: 'free' | 'standard'
+          last_active_at?: string | null
           created_at?: string
           updated_at?: string
         }

@@ -44,14 +44,20 @@ export async function updateSession(request: NextRequest) {
     error: userError,
   } = await supabase.auth.getUser()
 
+  if (user?.id) {
+    supabase
+      .from('profiles')
+      .update({ last_active_at: new Date().toISOString() })
+      .eq('id', user.id)
+      .then(() => {})
+      .catch(() => {})
+  }
+
   const url = request.nextUrl.clone()
   const pathname = url.pathname
-  const isTestApi = pathname.startsWith('/api/test')
 
-  // デバッグログ（テストAPIはログを出さない）
-  if (!isTestApi) {
-    console.log('[Middleware] Path:', pathname, 'User:', !!user, 'Error:', userError?.message)
-  }
+  // デバッグログ
+  console.log('[Middleware] Path:', pathname, 'User:', !!user, 'Error:', userError?.message)
 
   // 認証が必要なルート（ダッシュボード配下、推し、記事、アーカイブ、設定など）
   const protectedRoutes = ['/oshi', '/articles', '/archive', '/settings']
@@ -86,10 +92,10 @@ export async function updateSession(request: NextRequest) {
 
   // パブリックルートへのアクセスを許可
   if (isPublicRoute) {
-    if (!isTestApi) console.log('[Middleware] Allowing access to', pathname, '(public route)')
+    console.log('[Middleware] Allowing access to', pathname, '(public route)')
     return supabaseResponse
   }
 
-  if (!isTestApi) console.log('[Middleware] Allowing access to', pathname)
+  console.log('[Middleware] Allowing access to', pathname)
   return supabaseResponse
 }

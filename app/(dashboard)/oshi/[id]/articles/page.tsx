@@ -4,7 +4,7 @@
  */
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
@@ -21,59 +21,62 @@ export default function OshiArticlesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
+  const oshiId = Array.isArray(params.id) ? params.id[0] : params.id
 
-        if (!user) {
-          router.push("/login")
-          return
-        }
+  const fetchData = useCallback(async () => {
+    if (!oshiId) return
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-        const oshiId = Array.isArray(params.id) ? params.id[0] : params.id
-        if (!oshiId) {
-          setError("推しIDが無効です")
-          setIsLoading(false)
-          return
-        }
-
-        const { data: oshiData, error: oshiError } = await supabase
-          .from("oshi")
-          .select("*")
-          .eq("id", oshiId)
-          .eq("user_id", user.id)
-          .single()
-
-        if (oshiError || !oshiData) {
-          setError("推しが見つかりません")
-          setIsLoading(false)
-          return
-        }
-
-        setOshi(oshiData as Oshi)
-
-        const { data: articlesData, error: articlesError } = await supabase
-          .from("articles")
-          .select("*")
-          .eq("oshi_id", oshiId)
-          .eq("user_id", user.id)
-          .order("published_date", { ascending: false })
-          .order("created_at", { ascending: false })
-
-        if (articlesError) throw articlesError
-        setArticles((articlesData as Article[]) || [])
-      } catch (err: any) {
-        setError(err.message || "データの取得に失敗しました")
-      } finally {
-        setIsLoading(false)
+      if (!user) {
+        router.push("/login")
+        return
       }
-    }
 
+      const { data: oshiData, error: oshiError } = await supabase
+        .from("oshi")
+        .select("*")
+        .eq("id", oshiId)
+        .eq("user_id", user.id)
+        .single()
+
+      if (oshiError || !oshiData) {
+        setError("推しが見つかりません")
+        setIsLoading(false)
+        return
+      }
+
+      setOshi(oshiData as Oshi)
+
+      const { data: articlesData, error: articlesError } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("oshi_id", oshiId)
+        .eq("user_id", user.id)
+        .order("published_date", { ascending: false })
+        .order("created_at", { ascending: false })
+
+      if (articlesError) throw articlesError
+      setArticles((articlesData as Article[]) || [])
+    } catch (err: any) {
+      setError(err.message || "データの取得に失敗しました")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [oshiId, router, supabase])
+
+  useEffect(() => {
     fetchData()
-  }, [params.id, router, supabase])
+  }, [fetchData])
+
+  // 記事が0件のときは10秒ごとに再取得（バックグラウンド生成完了を待つ）
+  useEffect(() => {
+    if (!oshiId || isLoading || articles.length > 0) return
+    const interval = setInterval(fetchData, 10000)
+    return () => clearInterval(interval)
+  }, [oshiId, isLoading, articles.length, fetchData])
 
   if (isLoading) {
     return (

@@ -13,10 +13,13 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const supabase = await createClient()
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    
-    if (!error) {
-      // 認証成功時、指定されたページまたはダッシュボードにリダイレクト
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (!error && data?.user?.id) {
+      await supabase
+        .from('profiles')
+        .update({ last_active_at: new Date().toISOString() })
+        .eq('id', data.user.id)
       return NextResponse.redirect(new URL(next, request.url))
     }
   }

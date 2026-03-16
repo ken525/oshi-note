@@ -62,8 +62,19 @@ async function handleRequest(request: Request) {
     console.log('Starting article generation batch process...')
     const startTime = Date.now()
 
-    // Supabaseクライアントを取得
     const supabase = await createClient()
+
+    // 直近7日以内にログインしたアクティブユーザーのみ対象
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+
+    const { data: activeProfiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .gte('last_active_at', sevenDaysAgo.toISOString())
+
+    const activeUserIds = new Set((activeProfiles || []).map((p: any) => p.id))
+    console.log('[Cron] Active users (last 7 days):', activeUserIds.size)
 
     // 当日収集したraw_postsを取得
     const today = new Date()
@@ -130,6 +141,17 @@ async function handleRequest(request: Request) {
             oshi_id: oshiId,
             success: false,
             error: 'Failed to fetch oshi',
+          })
+          continue
+        }
+
+        const oshiUserId = (oshi as any).user_id
+        if (!activeUserIds.has(oshiUserId)) {
+          console.log(`[Cron] Skipping oshi ${oshiId} (user ${oshiUserId} not active in last 7 days)`)
+          results.push({
+            oshi_id: oshiId,
+            success: false,
+            error: 'User not active (skipped)',
           })
           continue
         }

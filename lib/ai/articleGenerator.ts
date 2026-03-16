@@ -4,9 +4,61 @@
  */
 import { createClient } from '@/lib/supabase/server'
 import { anthropic } from '@/lib/claude/client'
-import { SYSTEM_PROMPT, generateUserPrompt } from './prompts'
+import { SYSTEM_PROMPT } from './prompts'
 import type { Oshi, RawPost } from '@/types'
 import type { CollectedPost } from '@/types/collector'
+
+const truncate = (text: string, max: number) =>
+  text.length > max ? text.slice(0, max) + '...' : text
+
+function buildUserMessage(oshiName: string, date: string, posts: CollectedPost[]): string {
+  const postsBySource = posts.reduce((acc, post) => {
+    if (!acc[post.source]) acc[post.source] = []
+    acc[post.source].push(post)
+    return acc
+  }, {} as Record<string, CollectedPost[]>)
+
+  const sections = Object.entries(postsBySource).map(([source, sourcePosts]) => {
+    const sourceLabel: Record<string, string> = {
+      twitter: 'X',
+      instagram: 'Instagram',
+      tiktok: 'TikTok',
+      youtube: 'YouTube',
+      website: '公式サイト',
+    }
+    const label = sourceLabel[source] ?? source
+    // 最新順で最大3件
+    const sorted = [...sourcePosts].sort(
+      (a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime()
+    )
+    const limited = sorted.slice(0, 3)
+
+    const postDetails = limited
+      .map((p) => {
+        const metrics = [
+          p.metrics.likes ? `いいね${p.metrics.likes}` : '',
+          p.metrics.retweets ? `RT${p.metrics.retweets}` : '',
+          p.metrics.views ? `再生${p.metrics.views}` : '',
+          p.metrics.comments ? `コメント${p.metrics.comments}` : '',
+        ]
+          .filter(Boolean)
+          .join('・')
+
+        return [
+          `・"${truncate(p.content, 200)}"`,
+          metrics ? `　${metrics}` : '',
+          `　${p.url}`,
+        ]
+          .filter(Boolean)
+          .join('\n')
+      })
+      .join('\n')
+
+    return `[${label}]\n${postDetails}`
+  })
+
+  return `推し:${oshiName} 日付:${date}\n\n${sections.join('\n\n')}`
+}
 
 interface GeneratedArticle {
   title: string
@@ -22,7 +74,7 @@ interface ArticleGenerationResult {
 }
 
 export class ArticleGenerator {
-  private model: string = 'claude-sonnet-4-20250514'
+  private model: string = 'claude-haiku-4-5-20251001'
   private maxTokens: number = 4000
 
   /**
@@ -75,14 +127,12 @@ export class ArticleGenerator {
       // RawPostをCollectedPostに変換
       const collectedPosts: CollectedPost[] = rawPosts.map(post => this.convertToCollectedPost(post))
 
-      // プロンプトを生成
-      const userPrompt = generateUserPrompt(
-        {
-          name: oshi.name,
-          group_name: oshi.group_name,
-        },
-        collectedPosts
-      )
+      const date = new Date().toISOString().split('T')[0]
+      const userPrompt = buildUserMessage(oshi.name, date, collectedPosts)
+
+      const inputChars = SYSTEM_PROMPT.length + userPrompt.length
+      const estimatedInputTokens = Math.ceil(inputChars / 4)
+      console.log('[ArticleGenerator] estimated input tokens:', estimatedInputTokens, '(chars:', inputChars, ')')
 
       // Claude APIを呼び出し
       let response
@@ -98,6 +148,13 @@ export class ArticleGenerator {
             },
           ],
         })
+      if ((response as any).usage) {
+        const u = (response as any).usage
+        console.log('[ArticleGenerator] token usage:', {
+          input_tokens: u.input_tokens,
+          output_tokens: u.output_tokens,
+        })
+      }
       } catch (apiError: any) {
         // APIエラーを分かりやすく処理
         console.error('Claude API Error:', {
