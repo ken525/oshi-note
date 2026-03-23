@@ -16,7 +16,7 @@
  * - Vercel DashboardのCron Jobsセクションで確認可能
  */
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceRoleClient } from '@/lib/supabase/service-role'
 import { CollectorOrchestrator } from '@/lib/collectors'
 
 export const maxDuration = 300 // Vercelの最大実行時間（5分）
@@ -35,37 +35,32 @@ async function handleRequest(request: Request) {
     const authHeader = request.headers.get('authorization')
     const cronSecret = process.env.CRON_SECRET
 
-    if (cronSecret) {
-      // CRON_SECRETが設定されている場合は認証を要求
-      if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 }
-        )
-      }
-    } else {
-      // 本番環境ではCRON_SECRETの設定を推奨
-      // 開発環境では警告のみ
-      if (process.env.NODE_ENV === 'production') {
-        console.warn('WARNING: CRON_SECRET is not set in production')
-      }
-    }
-
-    // Vercel Cronからのリクエストか確認（X-Vercel-Cronヘッダー）
+    // 本番: CRON_SECRET がある場合は Bearer のみ検証（手動 curl も可）。
+    // 無い場合は Vercel Cron ヘッダーのみ（非推奨）。
     const vercelCronHeader = request.headers.get('x-vercel-cron')
-    if (!vercelCronHeader && process.env.NODE_ENV === 'production') {
-      // 本番環境ではVercel Cronからのリクエストのみ受け付ける
-      return NextResponse.json(
-        { error: 'Invalid request source' },
-        { status: 403 }
-      )
+    if (process.env.NODE_ENV === 'production') {
+      if (cronSecret) {
+        if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+      } else {
+        console.warn('WARNING: CRON_SECRET is not set in production')
+        if (!vercelCronHeader) {
+          return NextResponse.json(
+            { error: 'Invalid request source' },
+            { status: 403 }
+          )
+        }
+      }
+    } else if (cronSecret && (!authHeader || authHeader !== `Bearer ${cronSecret}`)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     console.log('Starting collection batch process...')
     const startTime = Date.now()
 
-    // Supabaseクライアントを取得
-    const supabase = await createClient()
+    // Cron にはユーザーセッションがないためサービスロールで RLS をバイパス
+    const supabase = createServiceRoleClient()
 
     // コレクターオーケストレーターを初期化
     const orchestrator = new CollectorOrchestrator(supabase)

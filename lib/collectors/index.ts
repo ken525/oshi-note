@@ -91,12 +91,19 @@ export class CollectorOrchestrator {
   async collectForOshi(oshi: Oshi): Promise<CollectionResult[]> {
     const results: CollectionResult[] = []
 
-    // 各コレクターを並列実行（エラーが発生しても他のコレクターに影響しない）
-    const collectors = [
-      { name: 'twitter' as const, collector: new TwitterCollector() },
-      { name: 'youtube' as const, collector: new YouTubeCollector() },
-      { name: 'website' as const, collector: new WebsiteCollector() },
-    ]
+    // 環境変数が無いコレクターはスキップ（1つでも無いとコンストラクタで落ちるため）
+    const collectors: Array<{
+      name: 'twitter' | 'youtube' | 'website'
+      collector: TwitterCollector | YouTubeCollector | WebsiteCollector
+    }> = []
+
+    if (process.env.TWITTER_BEARER_TOKEN) {
+      collectors.push({ name: 'twitter', collector: new TwitterCollector() })
+    }
+    if (process.env.YOUTUBE_API_KEY) {
+      collectors.push({ name: 'youtube', collector: new YouTubeCollector() })
+    }
+    collectors.push({ name: 'website', collector: new WebsiteCollector() })
 
     const promises = collectors.map(async ({ name, collector }) => {
       try {
@@ -162,7 +169,7 @@ export class CollectorOrchestrator {
           .select('id')
           .eq('oshi_id', oshiId)
           .eq('original_url', item.original_url)
-          .single()
+          .maybeSingle()
 
         if (existing) {
           // 既に存在する場合はスキップ

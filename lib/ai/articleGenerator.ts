@@ -106,8 +106,13 @@ export class ArticleGenerator {
 
   /**
    * 推しの情報を基に記事を生成
+   * @param options.publishedDate 記事の対象日（プロンプトの日付に使用。未指定時は今日）
    */
-  async generate(oshi: Oshi, rawPosts: RawPost[]): Promise<ArticleGenerationResult> {
+  async generate(
+    oshi: Oshi,
+    rawPosts: RawPost[],
+    options?: { publishedDate?: string }
+  ): Promise<ArticleGenerationResult> {
     if (rawPosts.length === 0) {
       return {
         success: false,
@@ -127,7 +132,8 @@ export class ArticleGenerator {
       // RawPostをCollectedPostに変換
       const collectedPosts: CollectedPost[] = rawPosts.map(post => this.convertToCollectedPost(post))
 
-      const date = new Date().toISOString().split('T')[0]
+      const date =
+        options?.publishedDate ?? new Date().toISOString().split('T')[0]
       const userPrompt = buildUserMessage(oshi.name, date, collectedPosts)
 
       const inputChars = SYSTEM_PROMPT.length + userPrompt.length
@@ -357,7 +363,8 @@ export class ArticleGenerator {
 
 /**
  * 指定日の記事を1本生成してDBに保存する
- * raw_postsにその日のデータがなければダミーデータで生成
+ * raw_posts: ①その日の posted_at → ②その日の collected_at → ③直近の収集分
+ * いずれも無い場合のみダミーで生成（開発・デモ用）
  * 呼び出し元に成功/失敗とエラーメッセージを返す
  */
 export async function generateArticleForDate(
@@ -381,20 +388,49 @@ export async function generateArticleForDate(
   const dayStart = `${date}T00:00:00.000Z`
   const dayEnd = `${date}T23:59:59.999Z`
 
-  const { data: rawPosts } = await supabase
+  let posts: RawPost[] = []
+
+  const { data: byPosted } = await supabase
     .from('raw_posts')
     .select('*')
     .eq('oshi_id', oshiId)
-    .gte('collected_at', dayStart)
-    .lte('collected_at', dayEnd)
+    .gte('posted_at', dayStart)
+    .lte('posted_at', dayEnd)
 
-  const posts: RawPost[] =
-    Array.isArray(rawPosts) && rawPosts.length > 0
-      ? (rawPosts as RawPost[])
-      : createDummyRawPostsForDate(oshiId, date)
+  if (byPosted && byPosted.length > 0) {
+    posts = byPosted as RawPost[]
+  } else {
+    const { data: byCollected } = await supabase
+      .from('raw_posts')
+      .select('*')
+      .eq('oshi_id', oshiId)
+      .gte('collected_at', dayStart)
+      .lte('collected_at', dayEnd)
+
+    if (byCollected && byCollected.length > 0) {
+      posts = byCollected as RawPost[]
+    } else {
+      const { data: recent } = await supabase
+        .from('raw_posts')
+        .select('*')
+        .eq('oshi_id', oshiId)
+        .order('collected_at', { ascending: false })
+        .limit(50)
+
+      if (recent && recent.length > 0) {
+        posts = recent as RawPost[]
+      }
+    }
+  }
+
+  if (posts.length === 0) {
+    posts = createDummyRawPostsForDate(oshiId, date)
+  }
 
   const generator = new ArticleGenerator()
-  const result = await generator.generate(oshi as Oshi, posts)
+  const result = await generator.generate(oshi as Oshi, posts, {
+    publishedDate: date,
+  })
   if (!result.success || !result.article) {
     console.error(
       `[generateArticleForDate] generation failed for ${oshiId} ${date}:`,
